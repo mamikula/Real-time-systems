@@ -1,0 +1,289 @@
+package Intelligent_Home_System
+public
+	
+	with Data_Model;
+	with Base_Types;
+	with sei;
+
+	system IntelligentHome
+	end IntelligentHome;
+	
+	processor MainProcessor
+		features
+			busAccess: requires bus access SystemBus;
+	end MainProcessor;
+	
+	processor implementation MainProcessor.impl
+		subcomponents
+			ram: memory Ram;
+	end MainProcessor.impl;
+	
+	memory Ram
+	end Ram;
+	
+	memory implementation Ram.Impl
+	end Ram.Impl;
+	
+	bus SystemBus
+		properties
+			SEI::BandWidthCapacity => 200.0 MBytesps;
+			SEI::BandWidthBudget => 950.0 KBytesps;
+	end SystemBus;
+	
+	bus implementation SystemBus.Impl
+	end SystemBus.Impl;
+	
+	system implementation IntelligentHome.Impl
+		subcomponents
+			cooler: device Cooler.Impl;
+			heater: device Heater.Impl;
+			temperatureController: device TemperatureController.Impl;
+			temperatureSensor: device TemperatureSensor.Impl;
+			airConditioningControlProcess: process AirConditioningControlProcess.Impl;
+			blinds: device Blinds.Impl;
+			sunDetector: device SunDetector.Impl;
+			blindsControlProcess: process BlindsControlProcess.Impl;
+			moveDetector: device MoveDetector.Impl;
+			lamp: device Lamp.Impl;
+			lampsControlProcess: process LampsControlProcess.Impl;
+			
+			systemBus: bus SystemBus.Impl;
+			mainProcessor: processor MainProcessor.Impl;
+			
+				connections
+					c1: port TemperatureSensor.currentTemperature -> AirConditioningControlProcess.currentTemperatureIn;
+					c2: port TemperatureController.desiredTemperature -> AirConditioningControlProcess.desiredTemperatureIn;
+					c3: port AirConditioningControlProcess.heaterPower -> Heater.setPower;
+					c4: port AirConditioningControlProcess.coolerPower -> Cooler.setPower;
+					c5: port SunDetector.sunlight -> BlindsControlProcess.sunlight;
+					c6: port BlindsControlProcess.desiredPosition -> Blinds.setPosition;
+					c7: port MoveDetector.moveDetection -> LampsControlProcess.moveDetection;
+					c8: port LampsControlProcess.setIntensity -> Lamp.setIntensity;
+					
+--					BUS CONNECTIONS
+					cooler_bus: bus access systemBus <-> cooler.busAccess;
+					heater_bus: bus access systemBus <-> heater.busAccess;
+					temperatureController_bus: bus access systemBus <-> temperatureController.busAccess;
+					temperatureSensor_bus: bus access systemBus <-> temperatureSensor.busAccess;
+					blinds_bus: bus access systemBus <-> blinds.busAccess;
+					sunDetector_bus: bus access systemBus <-> sunDetector.busAccess;
+					moveDetector_bus: bus access systemBus <-> moveDetector.busAccess;
+					lamp_bus: bus access systemBus <-> lamp.busAccess;
+					processor_bus: bus access systemBus <-> mainProcessor.busAccess;
+		    
+	end IntelligentHome.Impl;
+
+-- AC DEVICES
+
+	device TemperatureSensor
+		features
+			currentTemperature: out data port Temperature;
+			busAccess: requires bus access systemBus;
+	end TemperatureSensor;
+	
+	device implementation TemperatureSensor.Impl
+	end TemperatureSensor.Impl;
+	
+	device TemperatureController
+		features
+			desiredTemperature: out data port Temperature;
+			busAccess: requires bus access systemBus;
+	end TemperatureController;
+	
+	device implementation TemperatureController.Impl
+	end TemperatureController.Impl;
+	
+
+	device Cooler
+		features
+			setPower: in data port Power;
+			busAccess: requires bus access systemBus;
+	end Cooler;
+
+	device implementation Cooler.Impl
+	end Cooler.Impl;
+	
+	device Heater
+		features
+			setPower: in data port Power;
+			busAccess: requires bus access systemBus;
+	end Heater;
+			
+	device implementation Heater.Impl
+	end Heater.Impl;
+	
+	data Power
+		properties
+			Data_Model::Data_Representation => Integer;
+	end Power;
+	
+	data Temperature
+		properties
+			Data_Model::Data_Representation => Fixed;
+			Data_Model::Measurement_Unit => "degrees Celsius";
+	end Temperature;
+	
+--	AC PROCESS
+	
+	thread AirConditioningControlThread
+	features
+	  currentTemperatureIn: in data port Temperature;
+	  desiredTemperatureIn: in data port Temperature;
+	  heaterPower: out data port Power;
+	  coolerPower: out data port Power;
+	end AirConditioningControlThread;
+	
+	thread implementation AirConditioningControlThread.Impl
+	end AirConditioningControlThread.Impl;
+	
+	process AirConditioningControlProcess
+		features
+			currentTemperatureIn: in data port Temperature;
+	  		desiredTemperatureIn: in data port Temperature;
+			heaterPower: out data port Power;
+			coolerPower: out data port Power;
+  			
+	end AirConditioningControlProcess;
+	
+	process implementation AirConditioningControlProcess.Impl
+	subcomponents
+	  ac_thread: thread AirConditioningControlThread.Impl;
+	connections
+	  c1: port desiredTemperatureIn -> ac_thread.desiredTemperatureIn;
+	  c2: port currentTemperatureIn -> ac_thread.currentTemperatureIn;
+	  c3: port ac_thread.heaterPower -> heaterPower;
+	  c4: port ac_thread.coolerPower -> coolerPower;
+			
+	end AirConditioningControlProcess.Impl;
+	
+--	BLINDS DEVICES
+
+	device Blinds
+	features
+	  setPosition: in data port BlindsPosition;
+	  currentPosition: out data port BlindsPosition;
+	  busAccess: requires bus access systemBus;
+	end Blinds;
+	
+	device implementation Blinds.Impl
+	end Blinds.Impl;
+	
+	device SunDetector
+		features
+			sunlight: out data port Sunlight;
+			busAccess: requires bus access systemBus;
+	end SunDetector;
+	
+	device implementation SunDetector.Impl
+	end SunDetector.Impl;
+	
+	data Sunlight
+		properties
+			Data_Model::Data_Representation => Integer;
+	  		Data_Model::Measurement_Unit => "percent";
+	end Sunlight;
+	
+	data BlindsPosition
+	properties
+	  Data_Model::Data_Representation => Integer;
+	  Data_Model::Measurement_Unit => "percent";
+	end BlindsPosition;
+	
+	thread BlindsControlThread
+	features
+	  sunlight: in data port Sunlight;
+	  desiredPostion: out data port BlindsPosition;
+	end BlindsControlThread;
+	
+	thread implementation BlindsControlThread.Impl
+	end BlindsControlThread.Impl;
+	
+	process BlindsControlProcess
+	features
+	  desiredPosition: out data port BlindsPosition;
+	  sunlight: in data port Sunlight;
+	end BlindsControlProcess;
+	
+	process implementation BlindsControlProcess.Impl
+	subcomponents
+	  blinds_thread: thread BlindsControlThread.Impl;
+	connections
+		c1: port sunlight -> blinds_thread.sunlight;
+		c2: port blinds_thread.desiredPostion -> desiredPosition;
+	end BlindsControlProcess.Impl;
+
+--	Lamps
+
+	data LampIntensity
+	properties
+	  Data_Model::Data_Representation => Integer;
+	  Data_Model::Measurement_Unit => "percent";
+	end LampIntensity;
+
+	device MoveDetector
+		features
+			moveDetection: out data port Base_Types::Boolean;
+			busAccess: requires bus access systemBus;
+	end MoveDetector;
+	
+	device implementation MoveDetector.Impl
+	end MoveDetector.Impl;
+	
+	device Lamp
+		features
+			setIntensity: in data port LampIntensity;
+			busAccess: requires bus access systemBus;
+	end Lamp;
+	
+	device implementation Lamp.Impl
+	end Lamp.Impl;
+
+	thread LampsFilterThread
+	features
+	  moveDetection: in data port Base_Types::Boolean;
+	  activateLamp: out data port Base_Types::Boolean;
+	  startTimer: out data port Base_Types::Boolean;
+	  resetLamp: in data port Base_Types::Boolean;
+	end LampsFilterThread;
+	
+	thread implementation LampsFilterThread.Impl
+	end LampsFilterThread.Impl;
+	
+	thread LampsTimerThread
+	features
+	  startTimer: in data port Base_Types::Boolean;
+	  resetLamp: out data port Base_Types::Boolean;
+	end LampsTimerThread;
+	
+	thread implementation LampsTimerThread.Impl
+	end LampsTimerThread.Impl;
+	
+	thread LampsIntensityThread
+	features
+	  activateLamp: in data port Base_Types::Boolean;
+	  setIntensity: out data port LampIntensity;
+	end LampsIntensityThread;
+	
+	thread implementation LampsIntensityThread.Impl
+	end LampsIntensityThread.Impl;
+	
+	process LampsControlProcess
+	features
+	  setIntensity: out data port LampIntensity;
+	  moveDetection: in data port Base_Types::Boolean;
+	end LampsControlProcess;
+	
+	process implementation LampsControlProcess.Impl
+	subcomponents
+	  lampsFilterThread: thread LampsFilterThread.Impl;
+	  lampsTimerThread: thread LampsTimerThread.Impl;
+	  lampsIntensityThread: thread LampsIntensityThread.Impl;
+	connections
+		c1: port moveDetection -> lampsFilterThread.moveDetection;
+		c2: port lampsFilterThread.activateLamp -> lampsIntensityThread.activateLamp;
+		c3: port lampsFilterThread.startTimer -> lampsTimerThread.startTimer;
+		c4: port lampsTimerThread.resetLamp -> lampsFilterThread.resetLamp;
+		c5: port lampsIntensityThread.setIntensity -> setIntensity;
+	end LampsControlProcess.Impl;
+  
+end Intelligent_Home_System;
